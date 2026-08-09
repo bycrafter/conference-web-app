@@ -1,0 +1,17 @@
+node_modules
+coverage
+*.log*
+.nuxt
+.nitro
+.cache
+.output
+.env
+dist
+.DS_Store
+.idea
+.eslintcache
+components.d.ts
+*.tsbuildinfo
+api-generator/typedoc.json
+**/.DS_Store
+.junie

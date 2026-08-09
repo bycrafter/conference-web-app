@@ -1,0 +1,53 @@
+{
+    "name": "conference-web-api",
+    "version": "5.0.0",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "lint": "eslint --fix . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
+    },
+    "dependencies": {
+        "@fullcalendar/core": "^6.1.21",
+        "@fullcalendar/daygrid": "^6.1.21",
+        "@fullcalendar/interaction": "^6.1.21",
+        "@fullcalendar/timegrid": "^6.1.21",
+        "@fullcalendar/vue3": "^6.1.21",
+        "@primeuix/themes": "^2.0.0",
+        "axios": "^1.19.0",
+        "chart.js": "3.3.2",
+        "pinia": "^4.0.2",
+        "pinia-plugin-persistedstate": "^4.7.1",
+        "primeicons": "^7.0.0",
+        "primevue": "^4.5.4",
+        "tailwindcss-primeui": "^0.6.0",
+        "vue": "^3.4.34",
+        "vue-draggable-plus": "^0.6.1",
+        "vue-router": "^4.4.0"
+    },
+    "devDependencies": {
+        "@primevue/auto-import-resolver": "^4.3.1",
+        "@rushstack/eslint-patch": "^1.8.0",
+        "@tailwindcss/vite": "^4.1.17",
+        "@testing-library/vue": "^8.1.0",
+        "@types/node": "^26.1.2",
+        "@typescript-eslint/eslint-plugin": "^7.18.0",
+        "@typescript-eslint/parser": "^7.18.0",
+        "@vitejs/plugin-vue": "^5.0.5",
+        "@vue/eslint-config-prettier": "^9.0.0",
+        "@vue/test-utils": "^2.4.11",
+        "cypress": "^15.20.0",
+        "eslint": "^8.57.0",
+        "eslint-plugin-vue": "^9.23.0",
+        "jsdom": "^30.0.1",
+        "msw": "^2.15.0",
+        "prettier": "^3.2.5",
+        "sass": "^1.55.0",
+        "tailwindcss": "^4.1.17",
+        "typescript": "^7.0.2",
+        "unplugin-vue-components": "^0.27.3",
+        "vite": "^5.3.1",
+        "vitest": "^4.1.10",
+        "vue-tsc": "^3.3.9"
+    }
+}

@@ -1,0 +1,101 @@
+/**
+ * Mirrors the REAL `SlotRequestGrpcService` contract (`slot_request.proto`,
+ * `@bycrafter/conference-manager-grpc-contract`) and `SlotRequestsController`
+ * (`conference-web-api`) - verified against the backend source, not assumed.
+ *
+ * ARCHITECTURAL GAP: the backend exposes exactly 4 RPCs - `GetSlotRequestByToken`
+ * (public), `RequestSlot`, `ApproveSlotRequest`, `RejectSlotRequest` - all of
+ * them token-scoped. There is NO list/search RPC, so a queryable "pending
+ * requests" page cannot be built against this contract. `SlotRequestDto`
+ * itself does not carry the one-time action `token` either - it only ever
+ * reaches the client via the actionable email link (`/slot-requests/:token`).
+ * The UI therefore looks up a single request by the token in the URL rather
+ * than fetching a paginated queue.
+ */
+import { parseBffDate } from '@/types/conference.types';
+
+export enum SlotRequestStatus {
+    SLOT_REQUEST_STATUS_UNSPECIFIED = 'SLOT_REQUEST_STATUS_UNSPECIFIED',
+    PENDING = 'PENDING',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED'
+}
+
+const NUMERIC_SLOT_REQUEST_STATUS: Record<number, SlotRequestStatus> = {
+    0: SlotRequestStatus.SLOT_REQUEST_STATUS_UNSPECIFIED,
+    1: SlotRequestStatus.PENDING,
+    2: SlotRequestStatus.APPROVED,
+    3: SlotRequestStatus.REJECTED
+};
+
+export function normalizeSlotRequestStatus(raw: unknown): SlotRequestStatus {
+    if (typeof raw === 'number') {
+        return NUMERIC_SLOT_REQUEST_STATUS[raw] ?? SlotRequestStatus.SLOT_REQUEST_STATUS_UNSPECIFIED;
+    }
+    if (typeof raw === 'string' && raw in SlotRequestStatus) {
+        return SlotRequestStatus[raw as keyof typeof SlotRequestStatus];
+    }
+    return SlotRequestStatus.SLOT_REQUEST_STATUS_UNSPECIFIED;
+}
+
+/** Raw `SlotRequestDto` shape as received over HTTP, pre-enum-normalization. */
+export interface RawSlotRequestDto {
+    id: string;
+    conferenceId: string;
+    requesterUsername: string;
+    /** Epoch millis - may arrive as a plain number OR a protobuf `{ low, high }` Long object; see `parseBffDate`. */
+    requestedStartTime: unknown;
+    /** Epoch millis - may arrive as a plain number OR a protobuf `{ low, high }` Long object; see `parseBffDate`. */
+    requestedEndTime: unknown;
+    justification: string;
+    status: unknown;
+}
+
+export interface SlotRequestDto {
+    id: string;
+    conferenceId: string;
+    requesterUsername: string;
+    requestedStartTime: number;
+    requestedEndTime: number;
+    justification: string;
+    status: SlotRequestStatus;
+}
+
+export function normalizeSlotRequestDto(raw: RawSlotRequestDto): SlotRequestDto {
+    return {
+        ...raw,
+        requestedStartTime: parseBffDate(raw.requestedStartTime),
+        requestedEndTime: parseBffDate(raw.requestedEndTime),
+        status: normalizeSlotRequestStatus(raw.status)
+    };
+}
+
+/** Payload for `POST /v1/slot-requests` (`CreateSlotRequestDto`). */
+export interface CreateSlotRequestPayload {
+    conferenceId: string;
+    /** Epoch millis */
+    requestedStartTime: number;
+    /** Epoch millis */
+    requestedEndTime: number;
+    justification: string;
+}
+
+/** `SlotRequestResponse` returned by `approve`/`reject` (`POST /v1/slot-requests/:token/approve|reject`). */
+export interface RawSlotRequestActionResponse {
+    success: boolean;
+    message: string;
+    slotRequest: RawSlotRequestDto | null;
+}
+
+export interface SlotRequestActionResponse {
+    success: boolean;
+    message: string;
+    slotRequest: SlotRequestDto | null;
+}
+
+export function normalizeSlotRequestActionResponse(raw: RawSlotRequestActionResponse | null | undefined): SlotRequestActionResponse {
+    if (!raw) {
+        return { success: false, message: '', slotRequest: null };
+    }
+    return { ...raw, slotRequest: raw.slotRequest ? normalizeSlotRequestDto(raw.slotRequest) : null };
+}
