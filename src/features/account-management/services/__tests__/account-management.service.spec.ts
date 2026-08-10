@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import httpClient from '@/services/httpClient';
 import { accountManagementService } from '@/features/account-management/services/account-management.service';
-import { AccountRole, type CreateAccountPayload, type UpdateAccountPayload } from '@/types/account.types';
+import { AccountRole, AccountStatus, type CreateAccountPayload, type UpdateAccountPayload } from '@/types/account.types';
 
 vi.mock('@/services/httpClient', () => ({
     default: {
@@ -71,12 +71,13 @@ describe('accountManagementService', () => {
 
     it('givenCreatedAccountResponse_whenCreate_thenNormalizesReturnedDto', async () => {
         vi.mocked(httpClient.post).mockResolvedValueOnce({
-            data: { id: '1', username: 'jdoe', email: 'jdoe@bycrafter.com', role: 'ORGANIZER', firstName: 'Jane', lastName: 'Doe' }
+            data: { id: '1', username: 'jdoe', email: 'jdoe@bycrafter.com', role: 'ORGANIZER', firstName: 'Jane', lastName: 'Doe', status: 'PENDING' }
         });
 
         const result = await accountManagementService.create(buildCreatePayload());
 
         expect(result.role).toBe(AccountRole.ORGANIZER);
+        expect(result.status).toBe(AccountStatus.PENDING);
     });
 
     it('givenEmptyBffResponse_whenCreate_thenFallsBackToClientSideDtoBuiltFromPayload', async () => {
@@ -118,5 +119,21 @@ describe('accountManagementService', () => {
         await accountManagementService.remove('1');
 
         expect(httpClient.delete).toHaveBeenCalledWith('/accounts/1');
+    });
+
+    it('givenPendingAccountId_whenResendPassword_thenPostsToResendPasswordRoute', async () => {
+        vi.mocked(httpClient.post).mockResolvedValueOnce({ data: null });
+
+        await accountManagementService.resendPassword('1');
+
+        expect(httpClient.post).toHaveBeenCalledWith('/accounts/1/resend-password');
+    });
+
+    it('givenPendingAccountId_whenResetPassword_thenPostsToResetPasswordRoute', async () => {
+        vi.mocked(httpClient.post).mockResolvedValueOnce({ data: null });
+
+        await accountManagementService.resetPassword('1');
+
+        expect(httpClient.post).toHaveBeenCalledWith('/accounts/1/reset-password');
     });
 });

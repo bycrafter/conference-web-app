@@ -2,6 +2,25 @@ import { AccountRole, normalizeAccountRole } from '@/types/auth.types';
 
 export { AccountRole };
 
+/**
+ * Mirrors the account status surfaced by `account-manager` via `AccountController`
+ * (`conference-web-api`). `PENDING` accounts have not completed their first-login
+ * password change yet (see `LoginResponse.requirePasswordChange`).
+ */
+export enum AccountStatus {
+    PENDING = 'PENDING',
+    VERIFIED = 'VERIFIED',
+    PASSIVE = 'PASSIVE'
+}
+
+/** Normalizes a raw `status` value coming from `GET /v1/accounts/list` (`PENDING`/`VERIFIED`/`PASSIVE`), defaulting unknown/missing values to `PENDING` (safest, least-privileged assumption). */
+export function normalizeAccountStatus(rawStatus: unknown): AccountStatus {
+    if (typeof rawStatus === 'string' && rawStatus in AccountStatus) {
+        return AccountStatus[rawStatus as keyof typeof AccountStatus];
+    }
+    return AccountStatus.PENDING;
+}
+
 /** Raw `AccountResponse` shape as received over HTTP (`GET /v1/accounts/search`, `POST /v1/accounts/resolve-emails`), pre-enum-normalization. */
 export interface RawAccountSummaryDto {
     username: string;
@@ -41,6 +60,7 @@ export interface RawAccountDto {
     role: unknown;
     firstName: string;
     lastName: string;
+    status?: unknown;
 }
 
 /** Frontend-normalized account, used everywhere in the Account Management UI. */
@@ -51,12 +71,14 @@ export interface AccountDto {
     role: AccountRole;
     firstName: string;
     lastName: string;
+    status: AccountStatus;
 }
 
 export function normalizeAccountDto(raw: RawAccountDto): AccountDto {
     return {
         ...raw,
-        role: normalizeAccountRole(raw.role)
+        role: normalizeAccountRole(raw.role),
+        status: normalizeAccountStatus(raw.status)
     };
 }
 

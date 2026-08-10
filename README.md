@@ -59,10 +59,10 @@ cp .env.example .env
 
 | Variable              | Description                                                                 | Example                       |
 |-----------------------|-------------------------------------------------------------------------------|--------------------------------|
-| `VITE_API_BASE_URL`   | Base URL used by the SPA to call the BFF (`conference-web-api`).            | `http://localhost:3000/v1`    |
+| `VITE_API_BASE_URL`   | Base URL used by the SPA to call the BFF (`conference-web-api`).            | `/v1`    |
 
-- `.env.development` — used by `npm run dev` (points directly to a locally running BFF).
-- `.env.production` — used by `npm run build` (typically a relative path, e.g. `/v1`, proxied by nginx/reverse proxy).
+- `.env.development` — used by `npm run dev`. Kept as a **relative** `/v1` path (like production) and proxied same-origin to a locally running BFF (`http://localhost:3000`) by Vite's dev server `server.proxy` config (`vite.config.mjs`). This matters for the real-time calendar's `EventSource`/SSE connection: an absolute cross-origin URL here is subject to CORS and can silently fail to stream, whereas the dev proxy makes it same-origin, exactly mirroring nginx's `/v1/` proxy in production.
+- `.env.production` — used by `npm run build` (relative path `/v1`, proxied by nginx — see `nginx.conf`).
 
 ## 💻 Local Development Setup
 

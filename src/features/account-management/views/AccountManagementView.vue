@@ -2,7 +2,7 @@
 import { useAccountManagementStore } from '@/features/account-management/stores/account-management.store';
 import { useAuthStore } from '@/stores/authStore';
 import { PermissionCode } from '@/types/auth.types';
-import { AccountRole, type AccountDto, type CreateAccountPayload, type UpdateAccountPayload } from '@/types/account.types';
+import { AccountRole, AccountStatus, type AccountDto, type CreateAccountPayload, type UpdateAccountPayload } from '@/types/account.types';
 import { extractErrorMessage } from '@/utils/httpError';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
@@ -29,6 +29,8 @@ const dialogVisible = ref(false);
 const editingAccount = ref<AccountDto | null>(null);
 const submitting = ref(false);
 const removingId = ref<string | null>(null);
+const resendingId = ref<string | null>(null);
+const resettingId = ref<string | null>(null);
 
 const form = reactive<CreateAccountPayload>({
     username: '',
@@ -46,6 +48,16 @@ function roleSeverity(role: AccountRole): 'danger' | 'info' | 'secondary' {
         return 'info';
     }
     return 'secondary';
+}
+
+function statusSeverity(status: AccountStatus): 'warn' | 'success' | 'danger' {
+    if (status === AccountStatus.PENDING) {
+        return 'warn';
+    }
+    if (status === AccountStatus.PASSIVE) {
+        return 'danger';
+    }
+    return 'success';
 }
 
 function currentFilters() {
@@ -148,6 +160,51 @@ function confirmRemove(account: AccountDto): void {
     });
 }
 
+function confirmResendPassword(account: AccountDto): void {
+    confirm.require({
+        header: 'Resend Password',
+        message: `Re-send the temporary password email to "${account.username}" (${account.email})? This is useful if the original email never arrived.`,
+        icon: 'pi pi-envelope',
+        acceptLabel: 'Resend',
+        rejectLabel: 'Cancel',
+        accept: async () => {
+            resendingId.value = account.id;
+            try {
+                await accountManagementStore.resendPassword(account.id);
+                toast.add({ severity: 'success', summary: 'Password resent', detail: `The temporary password was re-sent to "${account.email}".`, life: 3000 });
+            } catch (err) {
+                const detail = extractErrorMessage(err, 'Failed to resend the password.');
+                toast.add({ severity: 'error', summary: 'Resend failed', detail, life: 5000 });
+            } finally {
+                resendingId.value = null;
+            }
+        }
+    });
+}
+
+function confirmResetPassword(account: AccountDto): void {
+    confirm.require({
+        header: 'Generate New Password',
+        message: `Generate a brand-new random temporary password for "${account.username}" and email it? The previous temporary password will stop working.`,
+        icon: 'pi pi-refresh',
+        acceptLabel: 'Generate',
+        rejectLabel: 'Cancel',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            resettingId.value = account.id;
+            try {
+                await accountManagementStore.resetPassword(account.id);
+                toast.add({ severity: 'success', summary: 'New password generated', detail: `A new temporary password was emailed to "${account.email}".`, life: 3000 });
+            } catch (err) {
+                const detail = extractErrorMessage(err, 'Failed to generate a new password.');
+                toast.add({ severity: 'error', summary: 'Generation failed', detail, life: 5000 });
+            } finally {
+                resettingId.value = null;
+            }
+        }
+    });
+}
+
 onMounted(() => {
     if (canManage.value) {
         void accountManagementStore.search();
@@ -202,11 +259,20 @@ onMounted(() => {
                         <Tag :value="data.role" :severity="roleSeverity(data.role)" />
                     </template>
                 </Column>
-                <Column header="Actions" style="width: 10rem">
+                <Column header="Status" style="width: 10rem">
+                    <template #body="{ data }">
+                        <Tag :value="data.status" :severity="statusSeverity(data.status)" />
+                    </template>
+                </Column>
+                <Column header="Actions" style="width: 14rem">
                     <template #body="{ data }">
                         <div class="flex gap-2">
                             <Button icon="pi pi-pencil" text rounded aria-label="Edit" @click="openEdit(data)" />
                             <Button icon="pi pi-trash" text rounded severity="danger" aria-label="Delete" :loading="removingId === data.id" @click="confirmRemove(data)" />
+                            <template v-if="data.status === AccountStatus.PENDING">
+                                <Button icon="pi pi-envelope" text rounded aria-label="Resend Password" title="Resend temporary password" :loading="resendingId === data.id" @click="confirmResendPassword(data)" />
+                                <Button icon="pi pi-refresh" text rounded severity="warn" aria-label="Generate New Password" title="Generate new random temporary password" :loading="resettingId === data.id" @click="confirmResetPassword(data)" />
+                            </template>
                         </div>
                     </template>
                 </Column>

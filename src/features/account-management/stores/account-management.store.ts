@@ -48,8 +48,8 @@ export const useAccountManagementStore = defineStore('accountManagement', {
             const account = await accountManagementService.update(id, payload);
             const index = this.items.findIndex((item) => item.id === id);
             if (index !== -1) {
-                // `UpdateAccountPayload` carries no `username` - preserve the existing one instead of trusting a blank fallback.
-                this.items.splice(index, 1, { ...account, username: this.items[index].username });
+                // `UpdateAccountPayload` carries no `username`/`status` - preserve the existing ones instead of trusting a blank fallback.
+                this.items.splice(index, 1, { ...account, username: this.items[index].username, status: this.items[index].status });
             }
             return account;
         },
@@ -57,6 +57,14 @@ export const useAccountManagementStore = defineStore('accountManagement', {
             await accountManagementService.remove(id);
             this.items = this.items.filter((item) => item.id !== id);
             this.totalElements = Math.max(0, this.totalElements - 1);
+        },
+        /** Re-sends the existing temp password email for a `PENDING` account - just in case the original mail never arrived. */
+        async resendPassword(id: string): Promise<void> {
+            await accountManagementService.resendPassword(id);
+        },
+        /** Generates a brand-new random temp password for a `PENDING` account and emails it. */
+        async resetPassword(id: string): Promise<void> {
+            await accountManagementService.resetPassword(id);
         }
     }
 });

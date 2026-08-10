@@ -2,14 +2,16 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAccountManagementStore } from '@/features/account-management/stores/account-management.store';
 import { accountManagementService } from '@/features/account-management/services/account-management.service';
-import { AccountRole, type AccountDto } from '@/types/account.types';
+import { AccountRole, AccountStatus, type AccountDto } from '@/types/account.types';
 
 vi.mock('@/features/account-management/services/account-management.service', () => ({
     accountManagementService: {
         list: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
-        remove: vi.fn()
+        remove: vi.fn(),
+        resendPassword: vi.fn(),
+        resetPassword: vi.fn()
     }
 }));
 
@@ -21,6 +23,7 @@ function buildAccount(overrides: Partial<AccountDto> = {}): AccountDto {
         role: AccountRole.STANDARD_ACCOUNT,
         firstName: 'Jane',
         lastName: 'Doe',
+        status: AccountStatus.VERIFIED,
         ...overrides
     };
 }
@@ -78,8 +81,8 @@ describe('accountManagementStore', () => {
 
         await store.update(original.id, { email: updated.email, firstName: updated.firstName, lastName: updated.lastName, role: updated.role });
 
-        // `UpdateAccountPayload` carries no `username`, so the store must not overwrite it with a blank value.
-        expect(store.items[0]).toEqual({ ...updated, username: original.username });
+        // `UpdateAccountPayload` carries no `username`/`status`, so the store must not overwrite them with blank/default values.
+        expect(store.items[0]).toEqual({ ...updated, username: original.username, status: original.status });
     });
 
     it('givenExistingAccount_whenRemove_thenFiltersItOutAndDecrementsTotal', async () => {
@@ -93,5 +96,23 @@ describe('accountManagementStore', () => {
 
         expect(store.items).toHaveLength(0);
         expect(store.totalElements).toBe(0);
+    });
+
+    it('givenPendingAccountId_whenResendPassword_thenDelegatesToService', async () => {
+        vi.mocked(accountManagementService.resendPassword).mockResolvedValueOnce(undefined);
+        const store = useAccountManagementStore();
+
+        await store.resendPassword('acc-1');
+
+        expect(accountManagementService.resendPassword).toHaveBeenCalledWith('acc-1');
+    });
+
+    it('givenPendingAccountId_whenResetPassword_thenDelegatesToService', async () => {
+        vi.mocked(accountManagementService.resetPassword).mockResolvedValueOnce(undefined);
+        const store = useAccountManagementStore();
+
+        await store.resetPassword('acc-1');
+
+        expect(accountManagementService.resetPassword).toHaveBeenCalledWith('acc-1');
     });
 });
