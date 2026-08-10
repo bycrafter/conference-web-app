@@ -6,15 +6,32 @@ export { AccountRole };
  * Mirrors the account status surfaced by `account-manager` via `AccountController`
  * (`conference-web-api`). `PENDING` accounts have not completed their first-login
  * password change yet (see `LoginResponse.requirePasswordChange`).
+ *
+ * Mirrors the REAL `AccountStatus` gRPC enum (`account.proto`,
+ * `@bycrafter/account-manager-grpc-contract`) - the BFF forwards the raw gRPC
+ * enum as-is, which `@grpc/proto-loader` may serialize as either the numeric
+ * wire value (0-3) or the string name depending on loader options, so
+ * `normalizeAccountStatus` below handles both shapes defensively.
  */
 export enum AccountStatus {
+    UNKNOWN_STATUS = 'UNKNOWN_STATUS',
     PENDING = 'PENDING',
     VERIFIED = 'VERIFIED',
     PASSIVE = 'PASSIVE'
 }
 
-/** Normalizes a raw `status` value coming from `GET /v1/accounts/list` (`PENDING`/`VERIFIED`/`PASSIVE`), defaulting unknown/missing values to `PENDING` (safest, least-privileged assumption). */
+const NUMERIC_ACCOUNT_STATUS: Record<number, AccountStatus> = {
+    0: AccountStatus.UNKNOWN_STATUS,
+    1: AccountStatus.PENDING,
+    2: AccountStatus.VERIFIED,
+    3: AccountStatus.PASSIVE
+};
+
+/** Normalizes a raw `status` value coming from `GET /v1/accounts/list` (`PENDING`/`VERIFIED`/`PASSIVE`, or their `0`-`3` gRPC wire values), defaulting unknown/missing values to `PENDING` (safest, least-privileged assumption). */
 export function normalizeAccountStatus(rawStatus: unknown): AccountStatus {
+    if (typeof rawStatus === 'number') {
+        return NUMERIC_ACCOUNT_STATUS[rawStatus] ?? AccountStatus.PENDING;
+    }
     if (typeof rawStatus === 'string' && rawStatus in AccountStatus) {
         return AccountStatus[rawStatus as keyof typeof AccountStatus];
     }
