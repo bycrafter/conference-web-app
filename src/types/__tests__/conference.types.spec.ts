@@ -56,4 +56,22 @@ describe('normalizeConferenceDto', () => {
         expect(dto.endTime).toBe(1722928154000);
         expect(dto.status).toBe(ConferenceStatus.SCHEDULED);
     });
+
+    it('givenNullFields_whenNormalizeConferenceDto_thenCoercesToStringsAndArray', () => {
+        const raw = buildRaw({
+            title: null as any,
+            description: null as any,
+            location: null as any,
+            privateInfo: null as any,
+            participants: null as any
+        });
+
+        const dto = normalizeConferenceDto(raw);
+
+        expect(dto.title).toBe('');
+        expect(dto.description).toBe('');
+        expect(dto.location).toBe('');
+        expect(dto.privateInfo).toBe('');
+        expect(dto.participants).toEqual([]);
+    });
 });

@@ -32,7 +32,7 @@ const sections: MenuSection[] = [
             { label: 'Calendar', icon: 'pi pi-fw pi-calendar', to: '/calendar', permissions: [PermissionCode.CONFERENCE_VIEW_ALL, PermissionCode.CONFERENCE_VIEW_LIMITED, PermissionCode.CONFERENCE_VIEW_SELF] },
             { label: 'Providers', icon: 'pi pi-fw pi-server', to: '/providers', permissions: [PermissionCode.PROVIDER_VIEW_ALL, PermissionCode.PROVIDER_MANAGE_ALL] },
             { label: 'Search', icon: 'pi pi-fw pi-search', to: '/search', permissions: [PermissionCode.CONFERENCE_VIEW_ALL, PermissionCode.CONFERENCE_VIEW_LIMITED, PermissionCode.CONFERENCE_VIEW_SELF] },
-            { label: 'Slot Requests', icon: 'pi pi-fw pi-inbox', to: '/slot-requests', permissions: [PermissionCode.SLOT_REQUEST_MANAGE_ALL, PermissionCode.SLOT_REQUEST_MANAGE_SELF] },
+            { label: 'Slot Requests', icon: 'pi pi-fw pi-inbox', to: '/slot-requests', permissions: [PermissionCode.SLOT_REQUEST_MANAGE_ALL] },
             { label: 'Account Management', icon: 'pi pi-fw pi-users', to: '/account-management', permissions: [PermissionCode.ACCOUNT_MANAGE_ALL] }
         ]
     }

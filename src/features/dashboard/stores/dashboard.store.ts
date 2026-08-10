@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { dashboardService } from '@/features/dashboard/services/dashboard.service';
+import { extractErrorMessage } from '@/utils/httpError';
 import { useAuthStore } from '@/stores/authStore';
 import { PermissionCode } from '@/types/auth.types';
 import type { OrganizerStatsDto, ProviderUsageDto } from '@/types/dashboard.types';
@@ -38,8 +39,8 @@ export const useDashboardStore = defineStore('dashboard', {
                 const data = await dashboardService.getStats();
                 this.organizerStats = data.organizerStats;
                 this.providerUsage = data.providerUsage;
-            } catch {
-                this.error = 'Failed to load dashboard statistics.';
+            } catch (err) {
+                this.error = extractErrorMessage(err, 'Failed to load dashboard statistics.');
             } finally {
                 this.loading = false;
             }

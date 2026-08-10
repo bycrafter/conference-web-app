@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { extractErrorMessage } from '@/utils/httpError';
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -25,8 +26,8 @@ async function handleLogin(): Promise<void> {
         }
         const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
         await router.push(redirect);
-    } catch {
-        errorMessage.value = 'Invalid username or password.';
+    } catch (err) {
+        errorMessage.value = extractErrorMessage(err, 'Invalid username or password.');
     } finally {
         loading.value = false;
     }

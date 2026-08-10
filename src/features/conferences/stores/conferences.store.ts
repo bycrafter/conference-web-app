@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { markRaw } from 'vue';
 import { conferencesService, buildConferenceStreamUrl } from '@/features/conferences/services/conferences.service';
+import { extractErrorMessage } from '@/utils/httpError';
 import { normalizeConferenceEvent, ConferenceEventType, type ConferenceDto, type CreateConferencePayload, type UpdateConferencePayload, type RawConferenceEvent, type SearchConferenceParams } from '@/types/conference.types';
 
 interface ConferencesState {
@@ -37,8 +38,8 @@ export const useConferencesStore = defineStore('conferences', {
             try {
                 const response = await conferencesService.search({ ...params, size: params.size ?? 500 });
                 this.events = response.items;
-            } catch {
-                this.error = 'Failed to load conferences.';
+            } catch (err) {
+                this.error = extractErrorMessage(err, 'Failed to load conferences.');
             } finally {
                 this.loading = false;
             }

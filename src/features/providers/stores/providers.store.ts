@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { providersService } from '@/features/providers/services/providers.service';
+import { extractErrorMessage } from '@/utils/httpError';
 import type { ProviderDto, ProviderUpsertPayload, SearchProvidersParams } from '@/types/provider.types';
 
 interface ProvidersState {
@@ -34,8 +35,8 @@ export const useProvidersStore = defineStore('providers', {
             this.error = null;
             try {
                 this.activeProviders = await providersService.getActive();
-            } catch {
-                this.error = 'Failed to load providers.';
+            } catch (err) {
+                this.error = extractErrorMessage(err, 'Failed to load providers.');
             } finally {
                 this.loading = false;
             }
@@ -48,8 +49,8 @@ export const useProvidersStore = defineStore('providers', {
                 this.items = response.items;
                 this.totalElements = response.totalElements;
                 this.page = response.page;
-            } catch {
-                this.adminError = 'Failed to load providers.';
+            } catch (err) {
+                this.adminError = extractErrorMessage(err, 'Failed to load providers.');
             } finally {
                 this.adminLoading = false;
             }

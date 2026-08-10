@@ -3,14 +3,10 @@
  * `@bycrafter/conference-manager-grpc-contract`) and `SlotRequestsController`
  * (`conference-web-api`) - verified against the backend source, not assumed.
  *
- * ARCHITECTURAL GAP: the backend exposes exactly 4 RPCs - `GetSlotRequestByToken`
- * (public), `RequestSlot`, `ApproveSlotRequest`, `RejectSlotRequest` - all of
- * them token-scoped. There is NO list/search RPC, so a queryable "pending
- * requests" page cannot be built against this contract. `SlotRequestDto`
- * itself does not carry the one-time action `token` either - it only ever
- * reaches the client via the actionable email link (`/slot-requests/:token`).
- * The UI therefore looks up a single request by the token in the URL rather
- * than fetching a paginated queue.
+ * `GetSlotRequestByToken` (public) remains the token-scoped single-record
+ * lookup used by the actionable email link. `ListSlotRequests` backs the
+ * admin queue (`GET /v1/slot-requests?status=`), optionally filtered by
+ * status, and requires `SLOT_REQUEST_MANAGE_ALL`.
  */
 import { parseBffDate } from '@/types/conference.types';
 
@@ -49,6 +45,7 @@ export interface RawSlotRequestDto {
     requestedEndTime: unknown;
     justification: string;
     status: unknown;
+    conferenceTitle?: string;
 }
 
 export interface SlotRequestDto {
@@ -59,6 +56,7 @@ export interface SlotRequestDto {
     requestedEndTime: number;
     justification: string;
     status: SlotRequestStatus;
+    conferenceTitle: string;
 }
 
 export function normalizeSlotRequestDto(raw: RawSlotRequestDto): SlotRequestDto {
@@ -66,8 +64,18 @@ export function normalizeSlotRequestDto(raw: RawSlotRequestDto): SlotRequestDto 
         ...raw,
         requestedStartTime: parseBffDate(raw.requestedStartTime),
         requestedEndTime: parseBffDate(raw.requestedEndTime),
-        status: normalizeSlotRequestStatus(raw.status)
+        status: normalizeSlotRequestStatus(raw.status),
+        conferenceTitle: raw.conferenceTitle ?? ''
     };
+}
+
+/** Raw `SlotRequestListResponse` shape as received from `GET /v1/slot-requests`. */
+export interface RawSlotRequestListResponse {
+    slotRequests?: RawSlotRequestDto[] | null;
+}
+
+export function normalizeSlotRequestList(raw: RawSlotRequestListResponse | null | undefined): SlotRequestDto[] {
+    return (raw?.slotRequests ?? []).map(normalizeSlotRequestDto);
 }
 
 /** Payload for `POST /v1/slot-requests` (`CreateSlotRequestDto`). */

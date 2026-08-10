@@ -45,6 +45,32 @@ describe('slotRequestsService', () => {
         expect(result).toBeNull();
     });
 
+    it('givenStatusFilter_whenList_thenCallsExactBffRouteWithStatusParam', async () => {
+        vi.mocked(httpClient.get).mockResolvedValueOnce({ data: { slotRequests: [buildRawDto()] } });
+
+        const result = await slotRequestsService.list(SlotRequestStatus.PENDING);
+
+        expect(httpClient.get).toHaveBeenCalledWith('/slot-requests', { params: { status: SlotRequestStatus.PENDING } });
+        expect(result).toHaveLength(1);
+        expect(result[0].status).toBe(SlotRequestStatus.PENDING);
+    });
+
+    it('givenNoStatusFilter_whenList_thenOmitsStatusParam', async () => {
+        vi.mocked(httpClient.get).mockResolvedValueOnce({ data: { slotRequests: [] } });
+
+        await slotRequestsService.list();
+
+        expect(httpClient.get).toHaveBeenCalledWith('/slot-requests', { params: { status: undefined } });
+    });
+
+    it('givenEmptyBffResponse_whenList_thenReturnsEmptyArrayInsteadOfThrowing', async () => {
+        vi.mocked(httpClient.get).mockResolvedValueOnce({ data: null });
+
+        const result = await slotRequestsService.list();
+
+        expect(result).toEqual([]);
+    });
+
     it('givenCreatePayload_whenCreate_thenPostsExactBffRouteAndPayloadShape', async () => {
         vi.mocked(httpClient.post).mockResolvedValueOnce({ data: buildRawDto() });
         const payload: CreateSlotRequestPayload = {
@@ -89,5 +115,28 @@ describe('slotRequestsService', () => {
         const result = await slotRequestsService.approve('abc123');
 
         expect(result).toEqual({ success: false, message: '', slotRequest: null });
+    });
+
+    it('givenRequestId_whenApproveById_thenPostsExactIdBasedBffRoute', async () => {
+        vi.mocked(httpClient.post).mockResolvedValueOnce({
+            data: { success: true, message: 'Approved', slotRequest: buildRawDto({ id: 'sr-2', status: 'APPROVED' }) }
+        });
+
+        const result = await slotRequestsService.approveById('sr-2');
+
+        expect(httpClient.post).toHaveBeenCalledWith('/slot-requests/id/sr-2/approve');
+        expect(result.success).toBe(true);
+        expect(result.slotRequest?.status).toBe(SlotRequestStatus.APPROVED);
+    });
+
+    it('givenRequestId_whenRejectById_thenPostsExactIdBasedBffRoute', async () => {
+        vi.mocked(httpClient.post).mockResolvedValueOnce({
+            data: { success: true, message: 'Rejected', slotRequest: buildRawDto({ id: 'sr-2', status: 'REJECTED' }) }
+        });
+
+        const result = await slotRequestsService.rejectById('sr-2');
+
+        expect(httpClient.post).toHaveBeenCalledWith('/slot-requests/id/sr-2/reject');
+        expect(result.slotRequest?.status).toBe(SlotRequestStatus.REJECTED);
     });
 });

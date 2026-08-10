@@ -3,6 +3,7 @@ import { useAccountManagementStore } from '@/features/account-management/stores/
 import { useAuthStore } from '@/stores/authStore';
 import { PermissionCode } from '@/types/auth.types';
 import { AccountRole, type AccountDto, type CreateAccountPayload, type UpdateAccountPayload } from '@/types/account.types';
+import { extractErrorMessage } from '@/utils/httpError';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, reactive, ref } from 'vue';
@@ -116,8 +117,8 @@ async function submit(): Promise<void> {
             toast.add({ severity: 'success', summary: 'Account created', detail: `A temporary password has been emailed to "${form.email.trim()}".`, life: 4000 });
         }
         dialogVisible.value = false;
-    } catch (err: any) {
-        const detail = err?.response?.data?.message ?? 'Failed to save the account.';
+    } catch (err) {
+        const detail = extractErrorMessage(err, 'Failed to save the account.');
         toast.add({ severity: 'error', summary: 'Save failed', detail, life: 5000 });
     } finally {
         submitting.value = false;
@@ -137,8 +138,8 @@ function confirmRemove(account: AccountDto): void {
             try {
                 await accountManagementStore.remove(account.id);
                 toast.add({ severity: 'success', summary: 'Account deleted', detail: `"${account.username}" was deleted successfully.`, life: 3000 });
-            } catch (err: any) {
-                const detail = err?.response?.data?.message ?? 'Failed to delete the account.';
+            } catch (err) {
+                const detail = extractErrorMessage(err, 'Failed to delete the account.');
                 toast.add({ severity: 'error', summary: 'Deletion failed', detail, life: 5000 });
             } finally {
                 removingId.value = null;

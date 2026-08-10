@@ -3,7 +3,7 @@ import { useProvidersStore } from '@/features/providers/stores/providers.store';
 import { useAuthStore } from '@/stores/authStore';
 import { PermissionCode } from '@/types/auth.types';
 import { ProviderStatus, ProviderType, ProviderVendor, type ProviderAccountDto, type ProviderDto, type ProviderUpsertPayload } from '@/types/provider.types';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 const providersStore = useProvidersStore();
 const authStore = useAuthStore();
@@ -81,11 +81,15 @@ function openEdit(provider: ProviderDto): void {
     form.vendor = provider.vendor;
     form.type = provider.type;
     form.status = provider.status;
-    form.accounts = provider.accounts.map((account) => ({ ...account }));
+    // Do NOT populate password in the form to ensure we only send it if the user types a new one
+    form.accounts = provider.accounts.map((account) => ({ accountUsername: account.accountUsername, accountPassword: '' }));
     dialogVisible.value = true;
 }
 
 function addCredential(): void {
+    if (form.type === ProviderType.SINGLE && form.accounts.length >= 1) {
+        return;
+    }
     form.accounts.push({ accountUsername: '', accountPassword: '' });
 }
 
@@ -102,7 +106,14 @@ async function submit(): Promise<void> {
         vendor: form.vendor,
         type: form.type,
         status: form.status,
-        accounts: form.accounts.filter((account) => account.accountUsername.trim() !== '')
+        accounts: form.accounts
+            .filter((account) => account.accountUsername.trim() !== '')
+            .map((account) => ({
+                accountUsername: account.accountUsername,
+                // Blank password means "keep the current password" on update; always sent explicitly
+                // (never omitted) so the payload shape stays consistent between create and edit.
+                accountPassword: account.accountPassword ?? ''
+            }))
     };
 
     submitting.value = true;
@@ -129,6 +140,15 @@ async function remove(provider: ProviderDto): Promise<void> {
         removingId.value = null;
     }
 }
+
+watch(
+    () => form.type,
+    (newType) => {
+        if (newType === ProviderType.SINGLE && form.accounts.length > 1) {
+            form.accounts = form.accounts.slice(0, 1);
+        }
+    }
+);
 
 onMounted(() => {
     void providersStore.search();
@@ -211,11 +231,24 @@ onMounted(() => {
             <div class="flex flex-col gap-2">
                 <div class="flex items-center justify-between">
                     <label>Credentials</label>
-                    <Button label="Add" icon="pi pi-plus" text size="small" @click="addCredential" />
+                    <Button
+                        v-if="form.type === ProviderType.POOL || form.accounts.length === 0"
+                        label="Add"
+                        icon="pi pi-plus"
+                        text
+                        size="small"
+                        @click="addCredential"
+                    />
                 </div>
                 <div v-for="(account, index) in form.accounts" :key="index" class="flex gap-2">
                     <InputText v-model="account.accountUsername" placeholder="Username" class="flex-1" />
-                    <Password v-model="account.accountPassword" placeholder="Password" toggle-mask :feedback="false" class="flex-1" />
+                    <Password
+                        v-model="account.accountPassword"
+                        :placeholder="editingProvider ? 'Leave blank to keep current password' : 'Password'"
+                        toggle-mask
+                        :feedback="false"
+                        class="flex-1"
+                    />
                     <Button icon="pi pi-times" text rounded severity="danger" aria-label="Remove credential" @click="removeCredential(index)" />
                 </div>
             </div>

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { SlotRequestStatus, normalizeSlotRequestActionResponse, normalizeSlotRequestDto, type RawSlotRequestDto } from '@/types/slot-request.types';
+import {
+    SlotRequestStatus,
+    normalizeSlotRequestActionResponse,
+    normalizeSlotRequestDto,
+    normalizeSlotRequestList,
+    type RawSlotRequestDto
+} from '@/types/slot-request.types';
 
 function buildRaw(overrides: Partial<RawSlotRequestDto> = {}): RawSlotRequestDto {
     return {
@@ -10,6 +16,7 @@ function buildRaw(overrides: Partial<RawSlotRequestDto> = {}): RawSlotRequestDto
         requestedEndTime: 1722928154000,
         justification: 'Need a later slot',
         status: 'PENDING',
+        conferenceTitle: 'Q3 Roadmap Review',
         ...overrides
     };
 }
@@ -47,6 +54,21 @@ describe('normalizeSlotRequestDto', () => {
 
         expect(dto.requestedStartTime).toBe(0);
         expect(dto.requestedEndTime).toBe(0);
+    });
+});
+
+describe('normalizeSlotRequestList', () => {
+    it('givenSlotRequests_whenNormalizeSlotRequestList_thenNormalizesEachEntry', () => {
+        const result = normalizeSlotRequestList({ slotRequests: [buildRaw(), buildRaw({ id: 'slot-request-2', status: 'APPROVED' })] });
+
+        expect(result).toHaveLength(2);
+        expect(result[0].status).toBe(SlotRequestStatus.PENDING);
+        expect(result[1].status).toBe(SlotRequestStatus.APPROVED);
+    });
+
+    it('givenNullOrMissingResponse_whenNormalizeSlotRequestList_thenReturnsEmptyArray', () => {
+        expect(normalizeSlotRequestList(null)).toEqual([]);
+        expect(normalizeSlotRequestList({})).toEqual([]);
     });
 });
 

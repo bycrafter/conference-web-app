@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
 import { useAuthStore } from '@/stores/authStore';
+import { extractErrorMessage } from '@/utils/httpError';
 import { useToast } from 'primevue/usetoast';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -31,8 +32,8 @@ async function handleChangePassword(): Promise<void> {
         await authStore.changePassword({ newPassword: newPassword.value });
         toast.add({ severity: 'success', summary: 'Password changed', detail: 'Please sign in with your new password.', life: 3000 });
         await router.push({ name: 'login' });
-    } catch (err: any) {
-        errorMessage.value = err?.response?.data?.message ?? 'Failed to change password. Please try logging in again.';
+    } catch (err) {
+        errorMessage.value = extractErrorMessage(err, 'Failed to change password. Please try logging in again.');
     } finally {
         loading.value = false;
     }

@@ -12,6 +12,7 @@ import ConferenceDetailDialog from '@/features/conferences/components/Conference
 import CreateEventDialog from '@/features/conferences/components/CreateEventDialog.vue';
 import { ConferenceStatus, type ConferenceDto } from '@/types/conference.types';
 import { PermissionCode } from '@/types/auth.types';
+import { extractErrorMessage } from '@/utils/httpError';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -111,12 +112,14 @@ watch(selectedProviderId, recomputeMappedEvents);
 watch(hideCancelled, recomputeMappedEvents);
 
 async function refetchRange(): Promise<void> {
-    if (!visibleRange.value) {
+    const range = visibleRange.value;
+    if (!range) {
         return;
     }
+    const { start, end } = range;
     await conferencesStore.fetchRange({
-        startTime: visibleRange.value.start,
-        endTime: visibleRange.value.end,
+        startTime: start,
+        endTime: end,
         providerId: selectedProviderId.value
     });
 }
@@ -160,7 +163,7 @@ function onEventDrop(info: EventDropArg): void {
         // conference (null title/description/location), a missing id, or a drop that FullCalendar
         // didn't resolve a proper start date for. Sending any of this straight to the backend's
         // full-replace `PATCH /v1/conferences/:id` is exactly what produces the 400.
-        if (!conference?.id || !start || conference.title == null || conference.description == null || conference.location == null || !conference.providerId) {
+        if (!conference?.id || !start || conference.title == null || conference.description == null || !conference.providerId) {
             info.revert();
             toast.add({ severity: 'error', summary: 'Reschedule failed', detail: 'This event cannot be rescheduled from the calendar.', life: 5000 });
             return;
@@ -188,9 +191,9 @@ function onEventDrop(info: EventDropArg): void {
                     participants: conference.participants ?? []
                 });
                 toast.add({ severity: 'success', summary: 'Event rescheduled', detail: `"${conference.title}" was moved successfully.`, life: 3000 });
-            } catch (err: any) {
+            } catch (err) {
                 info.revert();
-                const detail = err?.response?.data?.message ?? 'Failed to reschedule the conference.';
+                const detail = extractErrorMessage(err, 'Failed to reschedule the conference.');
                 toast.add({ severity: 'error', summary: 'Reschedule failed', detail, life: 5000 });
             }
         })();
@@ -215,23 +218,25 @@ const initialDate = typeof route.query.date === 'string' ? new Date(route.query.
  * on change, so including `mappedEvents.value` here (a plain `ref`, reassigned on every relevant
  * store change) is the most robust way to keep the calendar in sync with Vue 3 reactivity.
  */
-const calendarOptions = computed<CalendarOptions>(() => ({
-    plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
-    initialView: 'dayGridMonth',
-    initialDate,
-    headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-    },
-    height: 'auto',
-    selectable: canCreateEvent.value,
-    events: mappedEvents.value,
-    datesSet: onDatesSet,
-    eventClick: onEventClick,
-    eventDrop: onEventDrop,
-    select: onSelect
-}));
+const calendarOptions = computed<any>(() => {
+    return {
+        plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
+        initialView: 'dayGridMonth',
+        initialDate,
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        height: 'auto',
+        selectable: canCreateEvent.value,
+        events: mappedEvents.value,
+        datesSet: onDatesSet,
+        eventClick: onEventClick,
+        eventDrop: onEventDrop,
+        select: onSelect
+    };
+});
 
 function onEventCreated(): void {
     void refetchRange();

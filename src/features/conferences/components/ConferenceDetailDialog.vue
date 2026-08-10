@@ -9,6 +9,7 @@ import ConferenceMiniMap from '@/features/conferences/components/ConferenceMiniM
 import { ConferenceStatus, type ConferenceDto } from '@/types/conference.types';
 import { AccountRole, PermissionCode } from '@/types/auth.types';
 import type { AccountSummaryDto } from '@/types/account.types';
+import { extractErrorMessage } from '@/utils/httpError';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, reactive, ref, watch } from 'vue';
@@ -207,8 +208,8 @@ async function cancelConference(): Promise<void> {
                 toast.add({ severity: 'success', summary: 'Conference cancelled', detail: `"${current.title}" was cancelled successfully.`, life: 3000 });
                 emit('updated');
                 close();
-            } catch (err: any) {
-                const detail = err?.response?.data?.message ?? 'Failed to cancel the conference.';
+            } catch (err) {
+                const detail = extractErrorMessage(err, 'Failed to cancel the conference.');
                 toast.add({ severity: 'error', summary: 'Cancellation failed', detail, life: 5000 });
             } finally {
                 cancelling.value = false;
@@ -244,10 +245,10 @@ async function saveEdit(): Promise<void> {
         toast.add({ severity: 'success', summary: 'Event updated', detail: `"${form.title.trim()}" was updated successfully.`, life: 3000 });
         emit('updated');
         close();
-    } catch (err: any) {
+    } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Failed to update conference:', err);
-        const detail = err?.response?.data?.message ?? 'Failed to update the conference.';
+        const detail = extractErrorMessage(err, 'Failed to update the conference.');
         toast.add({ severity: 'error', summary: 'Update failed', detail, life: 5000 });
     } finally {
         submitting.value = false;

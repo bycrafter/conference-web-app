@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { accountsService } from '@/features/accounts/services/accounts.service';
 import { AccountRole, PermissionCode } from '@/types/auth.types';
 import type { AccountSummaryDto } from '@/types/account.types';
+import { extractErrorMessage } from '@/utils/httpError';
 import { useToast } from 'primevue/usetoast';
 import { computed, reactive, ref, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
@@ -46,8 +47,10 @@ const attendeesAutoComplete = ref<ComponentPublicInstance | null>(null);
 const attendeeSuggestions = ref<AccountSummaryDto[]>([]);
 const selectedAttendees = ref<AccountSummaryDto[]>([]);
 
-const onBehalfOptions = ref<AccountSummaryDto[]>([]);
-const onBehalfLoading = ref(false);
+const onBehalfAutoComplete = ref<ComponentPublicInstance | null>(null);
+const onBehalfSuggestions = ref<AccountSummaryDto[]>([]);
+const onBehalfSelected = ref<AccountSummaryDto | null>(null);
+const onBehalfError = ref<string | null>(null);
 
 const submitting = ref(false);
 const error = ref<string | null>(null);
@@ -79,18 +82,26 @@ function addCustomAttendee(): void {
     attendeeSuggestions.value = [];
 }
 
-/** ALL accounts (not just ORGANIZER/ADMIN) are eligible "on behalf of" owners - anyone may be scheduled as a conference's owner. */
-async function loadOnBehalfOptions(): Promise<void> {
+/**
+ * Single-selection typeahead search over ALL system accounts (not just ORGANIZER/ADMIN) -
+ * mirrors `searchAttendees`, but ONLY a real, matched system-user account may be selected
+ * (no free-text/custom entries, unlike Attendees) since "On Behalf Of" must always resolve
+ * to an internal `ownerUsername`.
+ */
+async function searchOnBehalf(event: { query: string }): Promise<void> {
     if (!canActOnBehalf.value) {
         return;
     }
-    onBehalfLoading.value = true;
+    onBehalfError.value = null;
     try {
-        onBehalfOptions.value = await accountsService.search({});
-    } catch {
-        onBehalfOptions.value = [];
-    } finally {
-        onBehalfLoading.value = false;
+        onBehalfSuggestions.value = await accountsService.search({ q: event.query });
+    } catch (err) {
+        onBehalfSuggestions.value = [];
+        // Surfaced so a failed search (permission mismatch, endpoint down, etc.) isn't a silent,
+        // unexplained unresponsive field - see the "On Behalf Of" bug report.
+        const detail = extractErrorMessage(err, 'Failed to search the account list.');
+        onBehalfError.value = detail;
+        toast.add({ severity: 'error', summary: 'Could not search accounts', detail, life: 5000 });
     }
 }
 
@@ -104,15 +115,24 @@ function resetForm(): void {
     form.startTime = props.initialRange?.start ?? null;
     form.endTime = props.initialRange?.end ?? null;
     selectedAttendees.value = [];
+    // Defaults "On Behalf Of" back to the current user - `role` is unused by the payload,
+    // only `username` matters, mirroring `form.ownerUsername`'s own default.
+    onBehalfSelected.value = { username: authStore.username ?? '', email: authStore.email ?? '', role: authStore.role ?? AccountRole.UNKNOWN };
+    onBehalfSuggestions.value = [];
+    onBehalfError.value = null;
     error.value = null;
 }
+
+/** Keeps `form.ownerUsername` (the actual payload field) in sync with the single selected account object bound to the "On Behalf Of" `AutoComplete`. */
+watch(onBehalfSelected, (selected) => {
+    form.ownerUsername = selected?.username ?? authStore.username ?? '';
+});
 
 watch(
     () => props.visible,
     (visible) => {
         if (visible) {
             resetForm();
-            void loadOnBehalfOptions();
         }
     }
 );
@@ -145,8 +165,8 @@ async function submit(): Promise<void> {
         toast.add({ severity: 'success', summary: 'Event created', detail: `"${form.title.trim()}" was scheduled successfully.`, life: 3000 });
         emit('created');
         close();
-    } catch (err: any) {
-        const detail = err?.response?.data?.message ?? 'Failed to create the conference.';
+    } catch (err) {
+        const detail = extractErrorMessage(err, 'Failed to create the conference.');
         error.value = detail;
         toast.add({ severity: 'error', summary: 'Creation failed', detail, life: 5000 });
     } finally {
@@ -215,7 +235,20 @@ async function submit(): Promise<void> {
 
             <div v-if="canActOnBehalf" class="flex flex-col gap-2">
                 <label for="event-on-behalf">On Behalf Of</label>
-                <Select id="event-on-behalf" v-model="form.ownerUsername" :options="onBehalfOptions" :loading="onBehalfLoading" option-label="username" option-value="username" placeholder="Organizer / Admin account" />
+                <AutoComplete
+                    id="event-on-behalf"
+                    ref="onBehalfAutoComplete"
+                    v-model="onBehalfSelected"
+                    force-selection
+                    option-label="username"
+                    :suggestions="onBehalfSuggestions"
+                    :delay="300"
+                    placeholder="Search a system user"
+                    @complete="searchOnBehalf"
+                >
+                    <template #option="{ option }">{{ option.firstName }} {{ option.lastName }} ({{ option.username }}) - {{ option.email }}</template>
+                </AutoComplete>
+                <Message v-if="onBehalfError" severity="error" :closable="false">{{ onBehalfError }}</Message>
             </div>
 
             <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>

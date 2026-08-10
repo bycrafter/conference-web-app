@@ -105,6 +105,10 @@ export function normalizeConferenceDto(raw: RawConferenceDto): ConferenceDto {
         startTime: parseBffDate(raw.startTime),
         endTime: parseBffDate(raw.endTime),
         status: normalizeConferenceStatus(raw.status),
+        title: raw.title ?? '',
+        description: raw.description ?? '',
+        location: raw.location ?? '',
+        privateInfo: raw.privateInfo ?? '',
         // Masked (foreign) conferences carry an empty `participants` repeated field, which the gRPC ->
         // BFF -> HTTP hop can serialize as `undefined`/`null` instead of `[]` - always coerce to an
         // array here so downstream `.includes(...)`/`.length` calls (dialog restricted-view guards,

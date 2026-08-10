@@ -46,16 +46,10 @@ export const providersService = {
     },
     async create(payload: ProviderUpsertPayload): Promise<ProviderDto> {
         const { data } = await httpClient.post<RawProviderDto | null>('/providers', payload);
-        // Some BFF deployments reply `201 Created` with an empty body instead of the
-        // created resource. Empty is not an error here either - fall back to a
-        // client-side DTO built from the payload we already know was accepted.
         return data ? normalizeProviderDto(data) : { id: crypto.randomUUID(), ...payload };
     },
     async update(id: string, payload: ProviderUpsertPayload): Promise<ProviderDto> {
         const { data } = await httpClient.patch<RawProviderDto | null>(`/providers/${id}`, payload);
-        // A `204 No Content`/empty-body reply on a successful PATCH must NOT be treated
-        // as an error, and must NOT wipe out the fields (e.g. `status`) we just saved -
-        // reconstruct the DTO from the payload that was actually persisted instead.
         return data ? normalizeProviderDto(data) : { id, ...payload };
     },
     async remove(id: string): Promise<void> {

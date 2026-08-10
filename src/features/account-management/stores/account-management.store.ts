@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { accountManagementService } from '@/features/account-management/services/account-management.service';
+import { extractErrorMessage } from '@/utils/httpError';
 import type { AccountDto, CreateAccountPayload, ListAccountsParams, UpdateAccountPayload } from '@/types/account.types';
 
 interface AccountManagementState {
@@ -31,8 +32,8 @@ export const useAccountManagementStore = defineStore('accountManagement', {
                 this.totalElements = response.totalElements;
                 this.page = response.page;
                 this.size = response.size || this.size;
-            } catch {
-                this.error = 'Failed to load accounts.';
+            } catch (err) {
+                this.error = extractErrorMessage(err, 'Failed to load accounts.');
             } finally {
                 this.loading = false;
             }

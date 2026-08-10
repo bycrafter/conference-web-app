@@ -7,9 +7,12 @@ import { SlotRequestStatus, type SlotRequestDto } from '@/types/slot-request.typ
 vi.mock('@/features/slot-requests/services/slot-requests.service', () => ({
     slotRequestsService: {
         getByToken: vi.fn(),
+        list: vi.fn(),
         create: vi.fn(),
         approve: vi.fn(),
-        reject: vi.fn()
+        reject: vi.fn(),
+        approveById: vi.fn(),
+        rejectById: vi.fn()
     }
 }));
 
@@ -30,6 +33,53 @@ describe('slotRequestsStore', () => {
     beforeEach(() => {
         setActivePinia(createPinia());
         vi.clearAllMocks();
+    });
+
+    it('givenFreshStore_whenInitialized_thenStatusFilterDefaultsToPending', () => {
+        const store = useSlotRequestsStore();
+
+        expect(store.statusFilter).toBe(SlotRequestStatus.PENDING);
+    });
+
+    it('givenNoArgs_whenFetchList_thenUsesCurrentStatusFilter', async () => {
+        vi.mocked(slotRequestsService.list).mockResolvedValueOnce([buildDto()]);
+        const store = useSlotRequestsStore();
+
+        await store.fetchList();
+
+        expect(slotRequestsService.list).toHaveBeenCalledWith(SlotRequestStatus.PENDING);
+        expect(store.items).toEqual([buildDto()]);
+        expect(store.error).toBeNull();
+    });
+
+    it('givenExplicitStatus_whenFetchList_thenUpdatesStatusFilterAndFetches', async () => {
+        vi.mocked(slotRequestsService.list).mockResolvedValueOnce([buildDto({ status: SlotRequestStatus.APPROVED })]);
+        const store = useSlotRequestsStore();
+
+        await store.fetchList(SlotRequestStatus.APPROVED);
+
+        expect(store.statusFilter).toBe(SlotRequestStatus.APPROVED);
+        expect(slotRequestsService.list).toHaveBeenCalledWith(SlotRequestStatus.APPROVED);
+        expect(store.items).toEqual([buildDto({ status: SlotRequestStatus.APPROVED })]);
+    });
+
+    it('givenUnspecifiedStatus_whenFetchList_thenOmitsStatusFromServiceCall', async () => {
+        vi.mocked(slotRequestsService.list).mockResolvedValueOnce([buildDto()]);
+        const store = useSlotRequestsStore();
+
+        await store.fetchList(SlotRequestStatus.SLOT_REQUEST_STATUS_UNSPECIFIED);
+
+        expect(slotRequestsService.list).toHaveBeenCalledWith(undefined);
+    });
+
+    it('givenServiceFailure_whenFetchList_thenSetsErrorInsteadOfThrowing', async () => {
+        vi.mocked(slotRequestsService.list).mockRejectedValueOnce(new Error('network error'));
+        const store = useSlotRequestsStore();
+
+        await store.fetchList();
+
+        expect(store.items).toEqual([]);
+        expect(store.error).toBe('Failed to load slot requests.');
     });
 
     it('givenExistingToken_whenFetchByToken_thenPopulatesCurrent', async () => {
@@ -91,5 +141,59 @@ describe('slotRequestsStore', () => {
 
         expect(success).toBe(true);
         expect(store.current?.status).toBe(SlotRequestStatus.REJECTED);
+    });
+
+    it('givenPendingRowInList_whenApproveById_thenSyncsThatRowInPlace', async () => {
+        vi.mocked(slotRequestsService.approveById).mockResolvedValueOnce({
+            success: true,
+            message: 'Approved',
+            slotRequest: buildDto({ id: 'sr-2', status: SlotRequestStatus.APPROVED })
+        });
+        const store = useSlotRequestsStore();
+        store.items = [buildDto({ id: 'sr-1' }), buildDto({ id: 'sr-2' })];
+
+        const success = await store.approveById('sr-2');
+
+        expect(success).toBe(true);
+        expect(slotRequestsService.approveById).toHaveBeenCalledWith('sr-2');
+        expect(store.items).toEqual([buildDto({ id: 'sr-1' }), buildDto({ id: 'sr-2', status: SlotRequestStatus.APPROVED })]);
+    });
+
+    it('givenBffRejectsAction_whenApproveById_thenSurfacesResponseMessageAsErrorWithoutMutatingList', async () => {
+        vi.mocked(slotRequestsService.approveById).mockResolvedValueOnce({ success: false, message: 'Already resolved', slotRequest: null });
+        const store = useSlotRequestsStore();
+        store.items = [buildDto({ id: 'sr-2' })];
+
+        const success = await store.approveById('sr-2');
+
+        expect(success).toBe(false);
+        expect(store.error).toBe('Already resolved');
+        expect(store.items).toEqual([buildDto({ id: 'sr-2' })]);
+    });
+
+    it('givenPendingRowInList_whenRejectById_thenSyncsThatRowInPlace', async () => {
+        vi.mocked(slotRequestsService.rejectById).mockResolvedValueOnce({
+            success: true,
+            message: 'Rejected',
+            slotRequest: buildDto({ id: 'sr-2', status: SlotRequestStatus.REJECTED })
+        });
+        const store = useSlotRequestsStore();
+        store.items = [buildDto({ id: 'sr-2' })];
+
+        const success = await store.rejectById('sr-2');
+
+        expect(success).toBe(true);
+        expect(slotRequestsService.rejectById).toHaveBeenCalledWith('sr-2');
+        expect(store.items).toEqual([buildDto({ id: 'sr-2', status: SlotRequestStatus.REJECTED })]);
+    });
+
+    it('givenServiceFailure_whenApproveById_thenSetsErrorInsteadOfThrowing', async () => {
+        vi.mocked(slotRequestsService.approveById).mockRejectedValueOnce(new Error('network error'));
+        const store = useSlotRequestsStore();
+
+        const success = await store.approveById('sr-2');
+
+        expect(success).toBe(false);
+        expect(store.error).toBe('Failed to approve the slot request.');
     });
 });

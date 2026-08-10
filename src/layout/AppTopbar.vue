@@ -81,7 +81,7 @@ async function onLogout() {
                     </g>
                 </svg>
 
-                <span>SAKAI</span>
+                <span>Conference Management App</span>
             </router-link>
         </div>
 
@@ -115,14 +115,6 @@ async function onLogout() {
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
-                    </button>
                     <button type="button" class="layout-topbar-action" @click="toggleProfileMenu" aria-haspopup="true" aria-controls="profile-menu">
                         <i class="pi pi-user"></i>
                         <span>Profile</span>
